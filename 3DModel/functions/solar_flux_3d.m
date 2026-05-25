@@ -3,7 +3,7 @@
 
 function q = solar_flux_3d(region, state,A_abs)
 
-global solar_time captured_power;
+global solar_time captured_power sb_constant T_amb pot_eps;
 
 if isempty(state.time)
     fprintf('empty time')
@@ -18,8 +18,14 @@ Psolar = interp1(solar_time, captured_power, state.time, 'linear', 0);
 
 qsolar = Psolar / A_abs;
 
+
+%qrad = sb_constant * 1-pot_eps) * (T_amb^4 - T.^4);
+qrad=0;
+
 % PDE Toolbox convention: positive = into domain
-q = qsolar * ones(size(region.x));
+q_unshaped = qsolar +qrad;
+
+q=q_unshaped* ones(size(region.x));
 
 
 
