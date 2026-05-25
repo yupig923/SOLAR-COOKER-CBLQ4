@@ -20,6 +20,7 @@ t_stop = 15*3600;         % 22:00
 cooking_duration = 3600;
 
 simulation_time_outdoor = [t_start t_move];
+%simulation_time_outdoor_lunch = [t_lunch t_lunch+3600];
 simulation_time_indoor = [t_move t_stop];
 
 
@@ -46,6 +47,8 @@ m_rice = 0.075;
 m_water = m_rice * 2;
 m_mix = m_water + m_rice;
 m_pot = 2;
+V_food = pi * (0.15)^2 * 0.08; % Volume of core food chamber (m³)
+
 
 pot_absorptivity = 0.95; % rough/dull aluminum
 
@@ -181,7 +184,7 @@ thermalProperties(thermalModel_outdoors, 'Cell', 2, 'ThermalConductivity', @pcm_
 % Food Subdomain (Cell 1)
 thermalProperties(thermalModel_indoors, 'Cell', 1, 'ThermalConductivity', k_mix, ...
                                           'MassDensity', 1000, ...
-                                          'SpecificHeat', c_water);
+                                          'SpecificHeat', c_mix);
 
 % PCM Subdomain (Cell 2) 
 thermalProperties(thermalModel_indoors, 'Cell', 2, 'ThermalConductivity', @pcm_3d_k, ...
@@ -216,15 +219,21 @@ topFace    = [3];
 bottomFace = [1];
 % The faces may be incoreect double check
 allExternalFaces = unique([outerFaces topFace bottomFace]);
-allInnerFaces=unique([innerFaces]);
+allSolarFaces=unique([outerFaces topFace]);
 
-A_abs = sum(arrayfun(@(f) faceArea(gm_outdoors,f), allExternalFaces));
+A_abs = sum(arrayfun(@(f) faceArea(gm_outdoors,f), allSolarFaces));
 %BoundaryConditions For Outdoor Charging Phase
 %if not cooking 
-thermalBC(thermalModel_outdoors, 'Face', allExternalFaces, ...
+thermalBC(thermalModel_outdoors, 'Face', allSolarFaces, ...
     'HeatFlux', @(region,state)solar_flux_3d(region,state,A_abs), ...
     'ConvectionCoefficient', h_free_outdoor, ...
     'AmbientTemperature', T_amb);
+
+
+cooking_time_points = [t_lunch, t_dinner];
+
+internalHeatSource(thermalModel_outdoors, @(region, state) food_volumetric_losses(region, state, ...
+    V_food, c_mix, m_mix, t_cooking, T_amb, T_sat_use, cooking_time_points), 'Cell', 1);
 
 %if cooking 
 % thermalBC(thermalModel_outdoors, 'Face', allExternalFaces, ...
